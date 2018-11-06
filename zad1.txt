@@ -1,0 +1,114 @@
+//wykorzystane biblioteki 
+library("genalg")
+
+//dane dla wersji 3x3(wymyślone)
+wysokosc <- 3
+szerokosc <- 3
+gora <- list(2, c(1,1), 2)
+bok <- list(2, c(1,1), 2)
+
+//dane dla wersji 5x5(z https://pl.puzzle-nonograms.com/)
+wysokosc <- 5
+szerokosc <- 5
+gora <- list(c(1,1), 1, 3, 3, 4)
+bok <- list(3, 3, c(1,3), 2, 1)
+
+//dane wersji 15x15(przykład z drógich laborek)
+wysokosc <- 15
+szerokosc <- 15
+gora <- list(c(3,2), c(1,3,2), c(2,1,2,1), c(2,1,1), c(2,1), c(1,2,1), c(6,6), 11, c(6,6), c(1,1,1), c(1,1,1), c(1,1), c(1,1,2,1), c(1,1,2), 3)
+bok <- list(c(1,1), c(1,1), c(1,1), c(1,1), c(1,3), c(3,3), c(1,2,3,3), c(1,1,2,1,1,1), c(1,5,1,1), c(2,3,1), c(2,3,1), c(1,3,1), c(1,1,3,1,1), c(2,4,1), c(4,1,4))
+
+//główna funkcja licząca wartość chromosomu, wywoływana przez fitnes-zdefiniować przed nią
+policz <- function(margines, pole) {
+	wynik <-0
+	ileKawalkow <- length(margines)
+	licznikKawalkow <- 0
+	dlugosc <- length(pole)
+	dlugoscKawalka <- 0
+	poprzednik <- 0
+	for(y in 1:dlugosc){
+		if(pole[y]==0) {
+			if(poprzednik==1) {
+				if(licznikKawalkow>ileKawalkow) {
+					wynik <- wynik+(dlugoscKawalka*5)
+				} else {
+					if(dlugoscKawalka>margines[licznikKawalkow]) {wynik <- wynik+(dlugoscKawalka-margines[licznikKawalkow])}
+					if(dlugoscKawalka<margines[licznikKawalkow]) {wynik <- wynik+(margines[licznikKawalkow]-dlugoscKawalka)}
+				}
+			}		
+			poprzednik <- 0
+		} else {
+			if(poprzednik==1) {
+				dlugoscKawalka <- dlugoscKawalka+1
+			} else {
+				dlugoscKawalka <- 1
+				licznikKawalkow <- licznikKawalkow+1
+			}		
+			poprzednik <- 1
+		}
+	}
+	if(poprzednik==1){
+		if(licznikKawalkow>ileKawalkow) {
+			wynik <- wynik+(dlugoscKawalka*5)
+		} else {
+			if(dlugoscKawalka>margines[licznikKawalkow]) {wynik <- wynik+(dlugoscKawalka-margines[licznikKawalkow])}
+			if(dlugoscKawalka<margines[licznikKawalkow]) {wynik <- wynik+(margines[licznikKawalkow]-dlugoscKawalka)}
+		}
+	}
+	if(licznikKawalkow<ileKawalkow) {
+        licznikKawalkow <- licznikKawalkow+1
+        for(t in licznikKawalkow:ileKawalkow) {
+            wynik <- wynik+(margines[t]*10)
+        }
+    }
+	wynik
+}
+
+// funckja fitness-wersja 1
+fitnes <- function(chromosom) {
+	wynik <- 0
+	macierz <- matrix(chromosom, nrow=wysokosc, ncol=szerokosc, byrow = TRUE)
+	for(x in 1:length(bok)) {
+		wynik <- wynik+policz(bok[[x]], macierz[x,])
+	}
+	for(x in 1:length(gora)) {
+		wynik <- wynik+policz(gora[[x]], macierz[x,])
+	}
+	wynik
+}
+
+// funckja fitness-wersja 2
+fitnes <- function(chromosom) {
+	wynik <- 0
+	sumaRealna <- sum(chromosom, na.rm = FALSE)
+	sumaWymagana <- 0
+	for(z in 1:wysokosc){
+		if(length(bok[[z]])==1){
+			sumaWymagana <- sumaWymagana+bok[[z]]
+		} else {
+			sumaWymagana <- sumaWymagana+sum(bok[[z]], na.rm = FALSE)
+		}
+	}
+	if(sumaWymagana>sumaRealna){wynik <- wynik+((sumaWymagana-sumaRealna)*100)}
+	if(sumaWymagana<sumaRealna){wynik <- wynik+((sumaRealna-sumaWymagana)*100)}
+	
+	macierz <- matrix(chromosom, nrow=wysokosc, ncol=szerokosc, byrow = TRUE)
+	for(x in 1:length(bok)) {
+		wynik <- wynik+policz(bok[[x]], macierz[x,])
+	}
+	for(x in 1:length(gora)) {
+		wynik <- wynik+policz(gora[[x]], macierz[x,])
+	}
+	wynik
+}
+
+//liczenie UWAGA zmieniać popSize i iters w razie potrzeby!!!
+rozwiazanie <- rbga.bin(size = (wysokosc*szerokosc), popSize = 200, iters = 100, mutationChance = 0.05, elitism = T, evalFunc = fitnes)
+//przejrzenie najlepszych wyników. jeśli pojawiają się wartości zerowe, znaleźliśmy poprawne rozwiązanie zadania
+rozwiazanie$best
+tail(rozwiazanie$best)
+//zaprezentowanie najlepszego wyniku jako macierzy
+rozwiazanieCiag <- rozwiazanie$population[which.min(rozwiazanie$evaluations),]
+rozwiazanieMacierz <- matrix(rozwiazanieCiag, nrow=wysokosc, ncol=szerokosc, byrow = TRUE)
+rozwiazanieMacierz
